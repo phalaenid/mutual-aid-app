@@ -1,4 +1,5 @@
 const ChangeDetector = require("./ChangeDetector");
+const P2pMoney = require("./../../p2p-money/p2p-money");
 // const newDeliveryRequest = require("./newDeliveryRequest");
 
 const wait = interval => new Promise(r => setTimeout(r, interval));
@@ -56,6 +57,25 @@ function startWorker(interval) {
           //TODO: write-back the slack message TS so that we can edit it later
         }
       }
+    }
+  });
+
+
+  let paymentRequestChanges = new ChangeDetector("PaymentRequests");
+  schedule("airtable-sync.payment-requests", interval, async () => {
+    const recordsChanged = await paymentRequestChanges.poll();
+    console.info(`Found ${recordsChanged.length} changes in PaymentRequests`);
+    for (const record of recordsChanged) {
+      P2pMoney.processChangedRecord(record)
+    }
+  });
+
+  let donorSignups = new ChangeDetector("Donors");
+  schedule("airtable-sync.donors", interval, async () => {
+    const recordsChanged = await donorSignups.poll();
+    console.info(`Found ${recordsChanged.length} changes in Donors`);
+    for (const record of recordsChanged) {
+      P2pMoney.processChangedRecord(record)
     }
   });
 }
