@@ -6,11 +6,11 @@ import ReactMapboxGl, {
   ZoomControl
 } from "react-mapbox-gl";
 import { LngLat } from "mapbox-gl";
-import quadrantsGeoJSON from "../../assets/crownheights.json";
+import quadrantsGeoJSON from "../../assets/flatbush.json";
 import { findBounds } from "../helpers/mapbox-coordinates";
 
 // get all coords in quadrantsGeoJSON to find bounds
-const CROWN_HEIGHTS_BOUNDS = findBounds(
+const FLATBUSH_BOUNDS = findBounds(
   quadrantsGeoJSON.features.reduce((acc, f) => {
     const lnglats = f.geometry.coordinates[0].map(
       coord => new LngLat(coord[0], coord[1])
@@ -19,7 +19,7 @@ const CROWN_HEIGHTS_BOUNDS = findBounds(
   }, [])
 );
 
-const CROWN_HEIGHTS_CENTER_COORD = new LngLat(-73.943018, 40.671254);
+const FLATBUSH_CENTER_COORD = new LngLat(-73.943018, 40.671254);
 const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN;
 
 const MapboxMap = MAPBOX_TOKEN
@@ -39,13 +39,13 @@ const MapboxMap = MAPBOX_TOKEN
 const QuadrantMap = ({ location }) => {
   const lnglat = location && new LngLat(location.lng, location.lat);
   const bounds = lnglat
-    ? findBounds([...CROWN_HEIGHTS_BOUNDS, lnglat])
-    : CROWN_HEIGHTS_BOUNDS;
+    ? findBounds([...FLATBUSH_BOUNDS, lnglat])
+    : FLATBUSH_BOUNDS;
 
   return (
     <MapboxMap
       style="mapbox://styles/mapbox/bright-v9"
-      center={CROWN_HEIGHTS_CENTER_COORD}
+      center={FLATBUSH_CENTER_COORD}
       containerStyle={{
         height: "350px",
         width: "100%"
