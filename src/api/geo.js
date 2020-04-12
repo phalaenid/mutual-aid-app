@@ -1,7 +1,7 @@
 const { Client } = require("@googlemaps/google-maps-services-js");
 const gju = require("geojson-utils");
 const Geonames = require("geonames.js");
-const boundsJson = require("../assets/crownheights.json");
+const boundsJson = require("../assets/flatbush.json");
 
 const googleGeoClient = new Client({});
 const geonamesClient = new Geonames({
@@ -30,6 +30,7 @@ exports.addressHandler = async (req, res, next) => {
     const geoResults = geoResult.data.results;
 
     const locResult = geoResults[0];
+
     const {
       geometry: { location }
     } = locResult;
