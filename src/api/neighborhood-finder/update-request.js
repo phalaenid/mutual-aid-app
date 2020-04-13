@@ -1,6 +1,6 @@
 const { updateRequestByCode, findRequestByCode } = require("../../airtable.js");
 
-const NEIGHBORHOOD_AREA_UNAVAILABLE_OPTION = "Other - not Crown Heights";
+const NEIGHBORHOOD_AREA_UNAVAILABLE_OPTION = "Other - not Flatbush";
 
 exports.neighborhoodFinderUpdateRequestHandler = async (req, res) => {
   const { requestCode, neighborhoodData } = req.body;
