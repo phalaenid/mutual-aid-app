@@ -183,7 +183,7 @@ export default function NeighborhoodFinder() {
               neighborhoodData={data}
               className={`${classes.saveNeibDataInput}`}
             />
-
+ 
             <Divider className={classes.divider} />
             <EmailButton />
           </>
@@ -192,10 +192,7 @@ export default function NeighborhoodFinder() {
         {error && (
           <>
             <Typography className={classes.text} variant="body1">
-              Error loading. Please try again. If it fails again, let us know in
-              &nbsp;
-              <a href="https://flatbushunited.slack.com/archives/C011DKYT45B">
-                #tech.
+              Error loading. the tech folks know and are working on it.
               </a>
             </Typography>
             <Divider className={classes.divider} />
