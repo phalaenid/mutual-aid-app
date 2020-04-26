@@ -193,7 +193,6 @@ export default function NeighborhoodFinder() {
           <>
             <Typography className={classes.text} variant="body1">
               Error loading. the tech folks know and are working on it.
-              </a>
             </Typography>
             <Divider className={classes.divider} />
             <EmailButton />

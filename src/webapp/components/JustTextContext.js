@@ -49,9 +49,9 @@ export default function JustTextContent({
       )}
       {followupRoute && (
         <Button variant="contained" className={classes.text}>
-          <Link className={classes.link} to={followupRoute}>
+          <a target="_blank" rel="noopener noreferrer" href={followupRoute}>
             {followupText || "Click Here"}
-          </Link>
+          </a>
         </Button>
       )}
     </Box>
