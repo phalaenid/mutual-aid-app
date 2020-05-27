@@ -1,8 +1,13 @@
 const Airtable = require("airtable");
+const { merge } = require("lodash");
 
 const base = new Airtable({ apiKey: process.env.AIRTABLE_KEY }).base(
   process.env.AIRTABLE_BASE
 );
+
+// ==================================================================
+// Request Table
+// ==================================================================
 
 exports.deleteRequest = async recordId => {
   console.log("Deleting record");
@@ -24,6 +29,9 @@ exports.createRequest = async request => {
       Phone: request.phone || "",
       "Text or Voice?": request.source,
       "External Id": request.externalId || "",
+      "Cross Street #1": request.crossStreets || "",
+      "Email Address": request.email || "",
+      "Time Sensitivity": request.urgency || "",
       Status: "Dispatch Needed"
     });
     return [record, null];
@@ -49,18 +57,111 @@ exports.findRequestByExternalId = async externalId => {
   }
 };
 
+exports.findOpenRequests = async () => {
+  const requestOpenStates = ["Dispatch Started", "Delivery Needed"];
+  const statusConstraints = requestOpenStates.map(s => `{Status} = '${s}'`);
+  const formula = `OR(${statusConstraints.join(", ")})`;
+  try {
+    const requests = await base("Requests")
+      .select({
+        filterByFormula: formula
+      })
+      .all();
+    const notInSlack = r => {
+      const meta = JSON.parse(r.get("Meta"));
+      return meta.slack_ts === undefined;
+    };
+    return [requests.filter(notInSlack), null];
+  } catch (e) {
+    return [[], `Error while looking up open requests: ${e}`];
+  }
+};
+
+exports.findRequestByCode = async code => {
+  try {
+    const records = await base("Requests")
+      .select({
+        filterByFormula: `({Code} = '${code}')`
+      })
+      .firstPage();
+    if (records.length === 0) {
+      return [null, "No requests found with that code."];
+    }
+    const record = records[0];
+    return [record, null];
+  } catch (e) {
+    return [null, `Error while finding request: ${e}`];
+  }
+};
+
+// `update` should look like:
+// {
+//   "Some Requests Field": "New Value",
+//   "Another field": "Another New Value"
+//   "Meta": {key: "value"}
+// }
+exports.updateRequestByCode = async (code, update) => {
+  try {
+    const records = await base("Requests")
+      .select({
+        filterByFormula: `({Code} = '${code}')`
+      })
+      .firstPage();
+    if (records.length === 0) {
+      return [null, `No requests found with code: ${code}`];
+    }
+    if (update.Meta) {
+      // Support for updating Meta as an object (rather than string)
+      /* eslint no-param-reassign: ["error", { "props": false }] */
+      const parsed = JSON.parse(records[0].get("Meta"));
+      merge(parsed, update.Meta);
+      update.Meta = JSON.stringify(parsed);
+    }
+    const record = records[0];
+    const airUpdate = {
+      id: record.id,
+      fields: update
+    };
+    const updatedRecords = await base("Requests").update([airUpdate]);
+    return [updatedRecords[0], null];
+  } catch (e) {
+    return [null, `Error while processing update: ${e}`];
+  }
+};
+
+// ==================================================================
+// Volunteer Table
+// ==================================================================
+
 exports.findVolunteerByEmail = async email => {
-  const record = await base("Volunteers")
-    .select({
-      filterByFormula: `({volunteer_email} = '${email}')`
-    })
-    .firstPage();
-  return record ? record[0] : null;
+  try {
+    const records = await base("Volunteers")
+      .select({
+        filterByFormula: `(LOWER({volunteer_email}) = '${email.toLowerCase()}')`
+      })
+      .firstPage();
+    if (!records || records.length === 0) {
+      return [null, `No volunteer signed up with email ${email}`];
+    }
+    return [records[0], null];
+  } catch (e) {
+    return [null, `Errors looking up volunteer by email ${email}: ${e}`];
+  }
 };
 
 exports.findVolunteerById = async id => {
-  return base("Volunteers").find(id);
+  try {
+    return [await base("Volunteers").find(id), null];
+  } catch (e) {
+    return [null, `Errors looking up volunteer by recordId ${id}: ${e}`];
+  }
 };
 
 exports.airbase = base;
 exports.UPDATE_BATCH_SIZE = 10;
+exports.SENSITIVE_FIELDS = [
+  "Phone",
+  "Email Address",
+  "Message",
+  "Intake General Notes"
+];

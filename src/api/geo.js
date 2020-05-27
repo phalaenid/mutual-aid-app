@@ -1,7 +1,7 @@
 const { Client } = require("@googlemaps/google-maps-services-js");
 const gju = require("geojson-utils");
 const Geonames = require("geonames.js");
-const boundsJson = require("../assets/crownheights.json");
+const boundsJson = require("../assets/flatbush.json");
 
 const googleGeoClient = new Client({});
 const geonamesClient = new Geonames({
@@ -30,14 +30,19 @@ exports.addressHandler = async (req, res, next) => {
     const geoResults = geoResult.data.results;
 
     const locResult = geoResults[0];
+
+    const {
+      geometry: { location }
+    } = locResult;
+
     const neighborhood = locResult.address_components.find(component =>
       component.types.includes("neighborhood")
     );
+
     const neighborhoodName = neighborhood ? neighborhood.long_name : "";
-    const [lt, long] = [
-      locResult.geometry.location.lat,
-      locResult.geometry.location.lng
-    ];
+
+    const [lt, long] = [location.lat, location.lng];
+
     const intersection = await geonamesClient.findNearestIntersection({
       lat: lt,
       lng: long
@@ -53,6 +58,7 @@ exports.addressHandler = async (req, res, next) => {
     return res.end(
       JSON.stringify({
         neighborhoodName,
+        location,
         intersection: {
           street_1: intersection.intersection.street1,
           street_2: intersection.intersection.street2

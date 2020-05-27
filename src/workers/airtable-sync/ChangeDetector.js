@@ -1,5 +1,9 @@
 const _ = require("lodash");
-const { airbase, UPDATE_BATCH_SIZE } = require("../../airtable");
+const {
+  airbase,
+  UPDATE_BATCH_SIZE,
+  SENSITIVE_FIELDS
+} = require("../../airtable");
 
 // Maps airtable column names
 const metaField = "Meta";
@@ -32,10 +36,11 @@ const overlapMs = 5 * 1000;
  *   //wait some time and poll again
  */
 class ChangeDetector {
-  constructor(tableName) {
+  constructor(tableName, writeDelayMs) {
     this.tableName = tableName;
     this.base = airbase(tableName);
     this.lastModified = new Date(0); // Unix epoch 0
+    this.writeDelayMs = writeDelayMs || 0; // Unix epoch 0
   }
 
   /**
@@ -73,7 +78,9 @@ class ChangeDetector {
    * (but not report changes or update metadata) for all rows when it is started.
    */
   async getModifiedRecords() {
-    const cutoff = new Date(this.lastModified.getTime() - overlapMs);
+    const cutoff = new Date(
+      Math.max(this.lastModified.getTime() - overlapMs, 0)
+    );
     const records = await this.base
       .select({
         filterByFormula: `({${lastModifiedField}} > '${cutoff.toISOString()}')`
@@ -94,6 +101,9 @@ class ChangeDetector {
       const fields = _.clone(record.fields);
       const meta = getNormalizedMeta(record);
       delete fields[metaField];
+      for (const sensitiveField of SENSITIVE_FIELDS) {
+        delete fields[sensitiveField];
+      }
       meta.lastValues = fields;
       updates.push({
         id: record.id,
@@ -107,6 +117,7 @@ class ChangeDetector {
     // unfortunately Airtable only allows 10 records at a time to be updated so batck up the changes
     for (const batch of _.chunk(updates, UPDATE_BATCH_SIZE)) {
       /* eslint-disable no-await-in-loop */
+      await new Promise(r => setTimeout(r, this.writeDelayMs));
       results += await this.base.update(batch);
     }
     return results;
@@ -123,7 +134,12 @@ class ChangeDetector {
     const meta = record.getMeta();
     const { lastValues } = meta;
 
-    const ignoredFields = [lastModifiedField, metaField, lastProcessedField];
+    const ignoredFields = [
+      lastModifiedField,
+      metaField,
+      lastProcessedField,
+      ...SENSITIVE_FIELDS
+    ];
     for (const ignoredField of ignoredFields) {
       delete fields[ignoredField];
       delete lastValues[ignoredField];
@@ -159,8 +175,16 @@ class ChangeDetector {
    * Push this instance's lastModified forward based on the latest modification date of the given fields
    */
   updateLastModified(records) {
-    const maxLastModified = _.max(records.map(r => r.get(lastModifiedField)));
-    this.lastModified = new Date(new Date(maxLastModified).getTime());
+    if (records.length === 0) {
+      return;
+    }
+    const maxLastModified = _.max(
+      records.map(r => {
+        const rModified = r.get(lastModifiedField);
+        return rModified ? new Date(rModified).getTime() : 0;
+      })
+    );
+    this.lastModified = new Date(maxLastModified || 0);
   }
 }
 
